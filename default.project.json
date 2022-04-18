@@ -5,7 +5,13 @@
 		"ReplicatedStorage": {
 			"$className": "ReplicatedStorage",
 			"$ignoreUnknownInstances": true,
-			"$path": "src/ReplicatedStorage"
+			"$path": "src/ReplicatedStorage",
+			"Packages": {
+				"$path": "Packages"
+			},
+			"Cacher": {
+				"$path": "src/Cacher.lua"
+			}
 		},
 		"ServerScriptService": {
 			"$className": "ServerScriptService",

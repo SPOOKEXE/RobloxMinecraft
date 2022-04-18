@@ -1,0 +1,6 @@
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+require(ReplicatedStorage:WaitForChild('Modules'))
+require(ReplicatedStorage:WaitForChild('Core'))
+local PlayerScripts = game:GetService('Players').LocalPlayer:WaitForChild('PlayerScripts')
+require(PlayerScripts:WaitForChild('Modules'))
+require(PlayerScripts:WaitForChild('Core'))
