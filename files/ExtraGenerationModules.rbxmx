@@ -1,0 +1,526 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+	<Meta name="ExplicitAutoJoints">true</Meta>
+	<External>null</External>
+	<External>nil</External>
+	<Item class="ModuleScript" referent="RBX4419105C2953447EB4292C1055786986">
+		<Properties>
+			<BinaryString name="AttributesSerialize"></BinaryString>
+			<Content name="LinkedSource"><null></null></Content>
+			<string name="Name">Generation</string>
+			<string name="OriginalScriptGuid"></string>
+			<string name="ScriptGuid">{FB142B9F-E239-4084-BA7F-69DC717F7FD9}</string>
+			<ProtectedString name="Source"><![CDATA[local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local SharedModules = require(ReplicatedStorage.Modules)
+
+local ServerUtility = require(script.Parent.Parent.Utility)
+local NoiseModule = ServerUtility['Noise']
+
+local Terrain = workspace.Terrain
+local Folder = Instance.new('Folder')
+Folder.Name = 'MapParts'
+Folder.Parent = Terrain
+
+local Module = {RenderQueue = {}}
+
+function Module:LoadNoiseType(NoisePath, Properties)
+	assert(typeof(NoisePath) == 'string', 'Noise Path has to be a string.')
+	assert(typeof(Properties) == 'table' or typeof(Properties) == 'nil', 'Properties must be nil or a table.')
+	return NoiseModule(NoisePath, Properties)
+end
+
+function Module:LoadDefault(Callback)
+	
+	local MapScale = SharedModules['Definitions'].MAP_DATA.SCALE
+	local YScale = SharedModules['Definitions'].MAP_DATA.Y_SCALE
+	
+	-- // Biome Map Addition // --
+	local GlobalNoiseMap = Module:LoadNoiseType("2D/SimpleLayered", {
+		SkipAveraging = true,
+		NoiseLayers = {
+			{
+				Amplitude = 15,
+				Scale = 12,
+				Persistence = 1,
+				Proportionality = 1.5,
+			},
+			{
+				Amplitude = 90,
+				Scale = 10,
+				Persistence = 1.5,
+				Proportionality = 8,
+			},
+		},
+	})
+	
+	local MapData = Module:LoadNoiseType("Maps/LayeredAdditionMap", {
+
+		BiomeMap = GlobalNoiseMap,
+
+		Noise2DLayerClasses = {
+
+			Module:LoadNoiseType("2D/SimpleLayered", {
+				SkipAveraging = true,
+				NoiseLayers = {
+					{
+						Amplitude = 5,
+						Scale = 25,
+						Persistence = 1.2,
+						Proportionality = 1.5,
+					},
+					{
+						Amplitude = 17,
+						Scale = 10,
+						Persistence = 0.2,
+						Proportionality = 5,
+					},
+				},
+				BiomeMap = GlobalNoiseMap,
+			}),
+
+			Module:LoadNoiseType("2D/SimpleLayered", {
+				SkipAveraging = true,
+				NoiseLayers = {
+					{
+						Amplitude = 8,
+						Scale = 6,
+						Persistence = 1,
+						Proportionality = 1.76,
+					},
+					{
+						Amplitude = 40,
+						Scale = 20,
+						Persistence = 0.8,
+						Proportionality = 3,
+					},
+				},
+				BiomeMap = GlobalNoiseMap,
+			}),
+
+		},
+	})
+	
+	--[[
+		local function CreateBasePart(Properties)
+			local basePart = Instance.new('Part')
+			basePart.Anchored = true
+			basePart.Parent = script
+			for k,v in pairs(Properties) do
+				basePart[k] = v
+			end
+			return basePart
+		end
+		
+		local Predefined = {
+			Water = CreateBasePart({
+				Color = Color3.new(0, 0.56, 0.84),
+				Transparency = 0.5,
+				Material = Enum.Material.SmoothPlastic,
+				CastShadow = false,
+			}),
+			Grass = CreateBasePart({
+				Color = Color3.new(0.32, 0.72, 0.06),
+				Material = Enum.Material.SmoothPlastic,
+				--Material = Enum.Material.Grass,
+			}),
+			Stone = CreateBasePart({
+				Color = Color3.new(0.47, 0.45, 0.5),
+				Material = Enum.Material.SmoothPlastic,
+				--Material = Enum.Material.Grass,
+			}),
+		}
+	]]
+	local RenderQueue = {}
+	Module.RenderQueue = RenderQueue
+	MapData.LoadBlockEvent:Connect(function(x, z, amplitudeY, rawY)
+		amplitudeY = amplitudeY * YScale
+		local ySize = 3 * (amplitudeY > 5 and amplitudeY or 5)
+		local yPos = amplitudeY - (ySize/4)
+		--local new = Predefined.Grass:Clone() --heightMatrix:GetFromThreashold(rawY):Clone()
+		--new.Size = Vector3.new(MapScale, ySize, MapScale)
+		--new.Position = Vector3.new(x * MapScale, yPos, z * MapScale)
+		--new.Parent = ReplicatedStorage.Assets
+		--table.insert(RenderQueue, new)
+		Terrain:FillBlock( CFrame.new(x * MapScale, yPos, z * MapScale), Vector3.new(MapScale, ySize, MapScale), Enum.Material.Grass )
+		if yPos <= 0 then --and new.Color == Predefined.Grass.Color then
+			for i = 1, 1 do
+				Terrain:FillBlock( CFrame.new(x * MapScale, yPos - (MapScale*-i), z * MapScale), Vector3.new(MapScale, ySize, MapScale), Enum.Material.Grass )
+				--local new = Predefined.Stone:Clone()
+				--new.Size = Vector3.new(MapScale, ySize, MapScale)
+				--new.Position = Vector3.new(x * MapScale, yPos + (ySize * -i), z * MapScale)
+				--new.Parent = ReplicatedStorage.Assets
+				--table.insert(RenderQueue, new)
+			end
+		end
+	end)
+	
+	local startX, finishX, startY, finishY = unpack(SharedModules['Definitions'].MAP_DATA.DEFAULT_REGION)
+	MapData:SetMapRegion(Vector2.new(startX, finishX), Vector2.new(startY, finishY), true, Callback)
+	
+	--[[
+	coroutine.wrap(function()
+		local N = 0
+		while true do
+			N += 1
+			if N >= 300 then
+				N = 0
+				wait()
+			end
+			if #RenderQueue > 0 then
+				RenderQueue[1].Parent = Folder
+				table.remove(RenderQueue, 1)
+			end
+		end
+	end)()
+	]]
+	
+end
+
+return Module]]></ProtectedString>
+			<int64 name="SourceAssetId">-1</int64>
+			<BinaryString name="Tags"></BinaryString>
+		</Properties>
+	</Item>
+	<Item class="ModuleScript" referent="RBX257B5500A61D455FAFAD8ED43D69B8D4">
+		<Properties>
+			<BinaryString name="AttributesSerialize"></BinaryString>
+			<Content name="LinkedSource"><null></null></Content>
+			<string name="Name">Map</string>
+			<string name="OriginalScriptGuid"></string>
+			<string name="ScriptGuid">{6E4EEEDB-6218-42D0-A85B-4F676BD5F34B}</string>
+			<ProtectedString name="Source"><![CDATA[local Generation = require(script.Parent.Generation)
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local SharedModules = require(ReplicatedStorage.Modules)
+local UtilModule = SharedModules['Utility']
+local DefinitionsModule = SharedModules['Definitions']
+local AssetsFolder = ReplicatedStorage:WaitForChild('Assets')
+
+local Terrain = workspace.Terrain
+
+local Folder = Instance.new('Folder')
+Folder.Name = 'MapObjects'
+Folder.Parent = workspace
+local SpawnModels = AssetsFolder.Models:GetChildren()
+
+local Models = {}
+local MaxSpawned = 1000
+
+-- // Module // --
+local Module = {}
+
+local MapScale = DefinitionsModule.MAP_DATA.SCALE
+local startX, startY, finishX, finishY = unpack(DefinitionsModule.MAP_DATA.DEFAULT_REGION)
+
+local params = RaycastParams.new()
+params.FilterType = Enum.RaycastFilterType.Whitelist
+params.FilterDescendantsInstances = {Terrain}
+function Module:GetRandomSpawnPosition(whitelistParent)
+	local TerrainBlocks = Terrain:WaitForChild('MapParts')
+	while wait() do
+		local origin = Vector3.new(math.random(startX * MapScale, finishX * MapScale), 200, math.random(startY * MapScale, finishY * MapScale))
+		local result = workspace:Raycast(origin, Vector3.new(0, -700, 0), params)
+		if result then
+			return result.Position
+		end
+	end
+end
+
+UtilModule.HalfSecondBeat:Connect(function()
+	if SharedModules['Utility']['GameStates']:GetState('GenerationFinished') and #Generation.RenderQueue == 0 then
+		if #Models < MaxSpawned then
+			local remaining = (MaxSpawned-#Models)
+			remaining = (remaining > 20 and 20 or remaining)
+			for i = 1, remaining do
+				local Model = SpawnModels[math.random(#SpawnModels)]:Clone()
+				Model:SetPrimaryPartCFrame(CFrame.new(Module:GetRandomSpawnPosition()))
+				Model.Parent = Folder
+				table.insert(Models, Model)
+			end
+		end
+	end
+end)
+
+return Module
+]]></ProtectedString>
+			<int64 name="SourceAssetId">-1</int64>
+			<BinaryString name="Tags"></BinaryString>
+		</Properties>
+	</Item>
+	<Item class="ModuleScript" referent="RBXDD6C14B30BD04D488ECE3ED6257CE449">
+		<Properties>
+			<BinaryString name="AttributesSerialize"></BinaryString>
+			<Content name="LinkedSource"><null></null></Content>
+			<string name="Name">Noise</string>
+			<string name="OriginalScriptGuid"></string>
+			<string name="ScriptGuid">{4AFAB333-E791-4317-B134-F2CF0796EB10}</string>
+			<ProtectedString name="Source"><![CDATA[
+local Cache = {}
+for _,Parent in pairs(script:GetChildren()) do
+	Cache[Parent.Name] = {}
+	for _,Module in pairs(Parent:GetChildren()) do
+		Cache[Parent.Name][Module.Name] = require(Module)
+	end
+end
+
+return function(NoisePath, ...) -- "2D/Simple"
+	assert(typeof(NoisePath) == 'string', "The given noise path must be a string.")
+	assert(string.find(NoisePath, '/'), "This is not a valid path. Expecting '/' in path." )
+	local path = string.split(NoisePath, '/')
+	local Tbl = Cache
+	for i, prntTxt in ipairs(path) do
+		if Tbl[prntTxt] then
+			Tbl = Tbl[prntTxt]
+		else
+			warn('Could not find parent: ', prntTxt, NoisePath, i)
+			return nil
+		end
+	end
+	return Tbl.New(...)
+end
+]]></ProtectedString>
+			<int64 name="SourceAssetId">-1</int64>
+			<BinaryString name="Tags"></BinaryString>
+		</Properties>
+		<Item class="Folder" referent="RBX1A1A49551ADB43BFAB0D31FF82B09B00">
+			<Properties>
+				<BinaryString name="AttributesSerialize"></BinaryString>
+				<string name="Name">2D</string>
+				<int64 name="SourceAssetId">-1</int64>
+				<BinaryString name="Tags"></BinaryString>
+			</Properties>
+			<Item class="ModuleScript" referent="RBX3C9AE66CAC114DFA9A76931E4C10390E">
+				<Properties>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<Content name="LinkedSource"><null></null></Content>
+					<string name="Name">Simple</string>
+					<string name="OriginalScriptGuid"></string>
+					<string name="ScriptGuid">{BD50E4A4-6713-4886-BD18-AF33D89AED76}</string>
+					<ProtectedString name="Source"><![CDATA[
+-- Pure Noise
+
+local Class = {}
+
+function Class.New(Properties)
+	
+	local self = {
+		Seed = math.random(),
+		Scale = 1,
+		Amplitude = 1,
+	}
+	
+	for k,v in pairs(Properties or {}) do
+		self[k] = v
+	end
+	
+	setmetatable(self, {__index = Class})
+	return self
+end
+
+function Class:Get2DNoiseRaw(X, Y)
+	return math.noise(self.Seed, X/self.Scale, Y/self.Scale)
+end
+
+function Class:RawValueToNoiseValue(rawNoiseValue)
+	return rawNoiseValue * self.Amplitude
+end
+
+function Class:Get2DNoiseValue(X, Y)
+	return self:RawValueToNoiseValue(self:Get2DNoiseRaw(X, Y))
+end
+
+return Class
+]]></ProtectedString>
+					<int64 name="SourceAssetId">-1</int64>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBX640E0B235A1A45F6ABF3C8D6510975BD">
+				<Properties>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<Content name="LinkedSource"><null></null></Content>
+					<string name="Name">SimpleLayered</string>
+					<string name="OriginalScriptGuid"></string>
+					<string name="ScriptGuid">{9094B95C-3AF2-4B6A-8B02-0FD5879A1C00}</string>
+					<ProtectedString name="Source"><![CDATA[
+-- Layering Multiple Noises Ontop of Each other
+
+local Class = {}
+
+function Class.New(Properties)
+	
+	local self = {
+		Seed = math.random(),
+		SkipAveraging = false,
+		BiomeMap = nil,
+		NoiseLayers = {
+			{
+				Amplitude = 1,
+				Scale = 1,
+				Persistence = 1,
+				Proportionality = 1,
+			},
+		},
+	}
+	
+	for k,v in pairs(Properties or {}) do
+		self[k] = v
+	end
+	
+	setmetatable(self, {__index = Class})
+	return self
+end
+
+function Class:Get2DNoiseRaw(X, Y)
+	local noise = 0
+	for index, noiseTbl in ipairs(self.NoiseLayers) do
+		noise += math.noise(self.Seed, X/noiseTbl.Scale, Y/noiseTbl.Scale) * (math.pow(noiseTbl.Persistence, index))
+	end
+	if not self.SkipAveraging then
+		noise /= #self.NoiseLayers
+	end
+	return noise
+end
+
+function Class:Get2DAmplitude(X, Y)
+	local amp = 0
+	for index, noiseTbl in ipairs(self.NoiseLayers) do
+		amp += noiseTbl.Amplitude ^ math.pow(noiseTbl.Persistence, math.pow(noiseTbl.Proportionality, index+1)) 
+	end
+	if not self.SkipAveraging then
+		amp /= #self.NoiseLayers
+	end
+	return amp
+end
+
+function Class:Get2DNoiseValue(X, Y)
+	return 
+		self:Get2DNoiseRaw(X, Y) * 
+		self:Get2DAmplitude(X, Y) * 
+		(self.BiomeMap and self.BiomeMap:Get2DNoiseRaw(X, Y) or 1)
+end
+
+return Class]]></ProtectedString>
+					<int64 name="SourceAssetId">-1</int64>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Folder" referent="RBXDA4C8618C8B943AEBFE1D594596A40B4">
+			<Properties>
+				<BinaryString name="AttributesSerialize"></BinaryString>
+				<string name="Name">Maps</string>
+				<int64 name="SourceAssetId">-1</int64>
+				<BinaryString name="Tags"></BinaryString>
+			</Properties>
+			<Item class="ModuleScript" referent="RBX77EE133618324F4283EBBFBD9F1E0A4B">
+				<Properties>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<Content name="LinkedSource"><null></null></Content>
+					<string name="Name">LayeredAdditionMap</string>
+					<string name="OriginalScriptGuid"></string>
+					<string name="ScriptGuid">{A9018D16-49A0-4F4F-AB90-F0D789A50040}</string>
+					<ProtectedString name="Source"><![CDATA[
+local Noise2D_Layered = require(script.Parent.Parent['2D'].SimpleLayered)
+
+local Class = {}
+
+function Class.New(Properties)
+	
+	local loadBlock = Instance.new('BindableEvent')
+	
+	local self = {
+		--NoiseMap = {},
+		Noise2DLayerClasses = {},
+		Start = '',
+		Finish = '',
+		
+		LoadBlockBindable = loadBlock,
+		LoadBlockEvent = loadBlock.Event,
+		
+		BiomeMap = nil,
+	}
+	
+	for k,v in pairs(Properties or {}) do
+		self[k] = v
+	end
+	
+	setmetatable(self, {__index = Class})
+	return self
+end
+
+function Class:Get2DNoiseValue(X, Z)
+	local totalNoise = 0
+	local rawNoise = 0
+	for index, noiseClass in ipairs(self.Noise2DLayerClasses) do
+		totalNoise += noiseClass:Get2DNoiseValue(X, Z)
+		rawNoise += noiseClass:Get2DNoiseRaw(X, Z)
+	end
+	return totalNoise, rawNoise
+end
+
+function Class:LoadMapPosition(X, Z)
+	--[[
+		if not self.NoiseMap[X] then
+			self.NoiseMap[X] = {}
+		end
+		local tbl = self.NoiseMap[X][Z]
+		if not tbl then
+			tbl = {self:Get2DNoiseValue(X, Z)}
+			self.NoiseMap[X][Z] = tbl
+		end
+		self.LoadBlockBindable:Fire(X, Z, tbl[1], tbl[2])
+	]]
+	local multiplier = (self.BiomeMap and self.BiomeMap:Get2DNoiseRaw(X, Z) or 1)
+	local a, b = self:Get2DNoiseValue(X, Z)
+	self.LoadBlockBindable:Fire(X, Z, a * multiplier, b * multiplier)
+end
+
+function Class:UpdateNoiseMap()
+	if typeof(self.Start) == 'Vector2' and typeof(self.Finish) == 'Vector2' then
+		local t = (self.Start.X > self.Finish.X and -1 or 1)
+		local t2 = (self.Start.Y > self.Finish.Y and -1 or 1)
+		for x = self.Start.X, self.Finish.X, t do
+			for z = self.Start.Y, self.Finish.Y, t2 do
+				self:LoadMapPosition(x, z)
+			end
+		end
+	end
+end
+
+function Class:SetMapRegion(startVector2, endVector2, updateMap, finishedUpdateCallback)
+	self.Start = startVector2
+	self.Finish = endVector2
+	if updateMap then
+		self:UpdateNoiseMap()
+		if typeof(finishedUpdateCallback) == 'function' then
+			finishedUpdateCallback()
+		end
+	end
+end
+
+return Class
+]]></ProtectedString>
+					<int64 name="SourceAssetId">-1</int64>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
+			</Item>
+		</Item>
+	</Item>
+	<Item class="ModuleScript" referent="RBX152B10222262466F84D8911A67E3370C">
+		<Properties>
+			<BinaryString name="AttributesSerialize"></BinaryString>
+			<Content name="LinkedSource"><null></null></Content>
+			<string name="Name">MAP_DATA</string>
+			<string name="OriginalScriptGuid"></string>
+			<string name="ScriptGuid">{AA94E1FF-185F-45F8-AF05-735B5109307D}</string>
+			<ProtectedString name="Source"><![CDATA[
+return {
+	SCALE = 9,
+	Y_SCALE = 5,
+	DEFAULT_REGION = {-100, -100, 100, 100},
+}
+]]></ProtectedString>
+			<int64 name="SourceAssetId">-1</int64>
+			<BinaryString name="Tags"></BinaryString>
+		</Properties>
+	</Item>
+</roblox>
