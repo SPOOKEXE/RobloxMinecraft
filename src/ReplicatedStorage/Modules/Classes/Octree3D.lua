@@ -1,5 +1,6 @@
 
-local VisualizerModule = require(script.Parent.Visualizers)
+local UtilityModule = script.Parent.Parent.Utility
+local VisualizerModule = require(UtilityModule.Visualizers)
 
 local Settings = {
 	MaxRegionSize = Vector3.new(1024, 1024, 1024),

@@ -30,6 +30,7 @@ function Preload(Parent)
 	-- Require Modules
 	for _, ModuleScript in ipairs( Parent:GetChildren() ) do
 		if ModuleScript:IsA('ModuleScript') then
+			-- print(ModuleScript:GetFullName())
 			Cache[ModuleScript.Name] = require(ModuleScript)
 		end
 	end

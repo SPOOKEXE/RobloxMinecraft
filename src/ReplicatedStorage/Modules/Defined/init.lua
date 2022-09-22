@@ -1,1 +1,1 @@
-require(game:GetService('ReplicatedStorage'):WaitForChild('Framework'))(script)
+return require(game:GetService('ReplicatedStorage'):WaitForChild('Framework'))(script)
