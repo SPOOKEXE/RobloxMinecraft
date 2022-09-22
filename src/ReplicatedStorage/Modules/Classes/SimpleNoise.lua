@@ -14,11 +14,17 @@ function Simple2D.New(seed, amplitude, mapScale)
 		map_scale = checkN0(mapScale or 128),
 		pre_final_methods = { },
 		post_final_methods = { },
+		_cache = { },
 	}, Simple2D)
 end
 
 function Simple2D:Get(x, y)
-	local noiseValue = math.noise( self.seed, x / self.map_scale, y / self.map_scale )
+	local index = x.."-"..y
+	local noiseValue = self._cache[index]
+	if noiseValue then
+		return noiseValue
+	end
+	noiseValue = math.noise( self.seed, x / self.map_scale, y / self.map_scale )
 	for _, method in ipairs( self.pre_final_methods ) do
 		method(noiseValue)
 	end
@@ -26,11 +32,13 @@ function Simple2D:Get(x, y)
 	for _, method in ipairs( self.post_final_methods ) do
 		method(noiseValue)
 	end
+	self._cache[index] = noiseValue
 	return noiseValue
 end
 
 function Simple2D:AppendPreMethod( noiseMethod, index )
 	if index then
+		index = math.clamp(index, 1, #self.pre_final_methods)
 		table.insert(self.pre_final_methods, index, noiseMethod)
 	else
 		table.insert(self.pre_final_methods, noiseMethod)
@@ -39,6 +47,7 @@ end
 
 function Simple2D:AppendPostMethod( noiseMethod, index )
 	if index then
+		index = math.clamp(index, 1, #self.post_final_methods)
 		table.insert(self.post_final_methods, index,  noiseMethod)
 	else
 		table.insert(self.post_final_methods, noiseMethod)
@@ -79,7 +88,12 @@ function Simple3D.New(...)
 end
 
 function Simple3D:Get(x, y, z)
-	local baseNoiseValue = math.noise(self.seed, self.rX, self.rY) * math.noise( x / self.map_scale, y / self.map_scale, z / self.map_scale )
+	local index = x.."-"..y.."-"..z
+	local baseNoiseValue = self._cache[index]
+	if baseNoiseValue then
+		return baseNoiseValue
+	end
+	baseNoiseValue = math.noise(self.seed, self.rX, self.rY) * math.noise( x / self.map_scale, y / self.map_scale, z / self.map_scale )
 	for _, method in ipairs( self.pre_final_methods ) do
 		method(baseNoiseValue)
 	end
@@ -87,6 +101,7 @@ function Simple3D:Get(x, y, z)
 	for _, method in ipairs( self.post_final_methods ) do
 		method(baseNoiseValue)
 	end
+	self._cache[index] = baseNoiseValue
 	return baseNoiseValue
 end
 
